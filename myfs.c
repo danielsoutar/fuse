@@ -133,7 +133,7 @@ static int myfs_getattr(const char *path, struct stat *stbuf) {
         
     	char *token, *copy;
 
-    	strcpy(copy, path)
+    	strcpy(copy, path);
 
     	while((token = strtok(copy, SLASH)) != NULL) {
     		write_log("token: %s\n", token);
@@ -516,7 +516,7 @@ void init_fs() {
         Dirent *current, *parent;
 
         // Set strings for root dirents
-        for(int i = 0; root_path[i] != NULL; i++) {
+        for(int i = 0; root_path[i] != '\0'; i++) {
         	current->name[i] = root_path[i];
         	parent->name[i] = root_path[i];
         }
