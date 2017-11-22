@@ -522,6 +522,8 @@ void init_fs() {
         	current->name[i] = root_path[i];
         	parent->name[i] = root_path[i];
         }
+        printf("%d is sizeof data for 'current' dirent.\n", sizeof(current->data));
+        printf("%d is sizeof data for 'parent' dirent.\n", sizeof(parent->data));
 
         current->data = *data_id;
         parent->data = *data_id;
