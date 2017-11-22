@@ -515,15 +515,15 @@ void init_fs() {
         uuid_generate(root_fcb.data);
 
         uint8_t *data_block[MY_MAX_FILE_SIZE];
-        Dirent *current, *parent;
+        Dirent current, parent;
 
         // Set strings for root dirents
         for(int i = 0; root_path[i] != '\0'; i++) {
-        	current->name[i] = root_path[i];
-        	parent->name[i] = root_path[i];
+        	current.name[i] = root_path[i];
+        	parent.name[i] = root_path[i];
         }
-        printf("%d is sizeof data for 'current' dirent.\n", sizeof(current->data));
-        printf("%d is sizeof data for 'parent' dirent.\n", sizeof(parent->data));
+        printf("%d is sizeof data for 'current' dirent.\n", sizeof(current.data));
+        printf("%d is sizeof data for 'parent' dirent.\n", sizeof(parent.data));
 
         // current->data = *data_id;
         // parent->data = *data_id;
