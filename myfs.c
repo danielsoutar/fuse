@@ -27,7 +27,7 @@
 #define DIRENTHASHSIZE 2
 
 // Let's cache the root fcb and dirent data structure in memory.
-char root_path[] = "/\0";
+char root_path[2] = "/\0";
 fcb root_fcb;
 Dirent * root_table[DIRENTHASHSIZE];
 unqlite_int64 root_object_size_value = sizeof(fcb);
@@ -131,16 +131,15 @@ static int myfs_getattr(const char *path, struct stat *stbuf) {
 
         // The root directory contents, containing a sequence of Dirent objects which contain the mapping from path names to uuids
         
-    	char *token;
+    	char *token, *copy;
 
-    	while((token = strtok(path, SLASH)) != NULL) {
+    	strcpy(copy, path)
+
+    	while((token = strtok(copy, SLASH)) != NULL) {
     		write_log("token: %s\n", token);
     	}
 
-
-
-        }
-        if (strcmp(path, root_fcb.path) == 0) {
+        if (strcmp(path, root_path) == 0) {
             stbuf->st_mode = root_fcb.mode;
             stbuf->st_nlink = 1;				//by default I'm just going to leave out the ability to make hard links and always set st_nlink to 1.
             stbuf->st_mtime = root_fcb.mtime;
@@ -218,7 +217,7 @@ static int myfs_read(const char *path, char *buf, size_t size, off_t offset, str
 		if(rc != UNQLITE_OK)
 		  error_handler(rc);
 
-		if(nBytes != MY_MAX_FILE_SIZE) {
+		if(num_bytes != MY_MAX_FILE_SIZE) {
 			write_log("myfs_read - EIO");
 			return -EIO;
 		}
