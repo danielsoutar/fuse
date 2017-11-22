@@ -523,8 +523,7 @@ void init_fs() {
         	parent.name[i] = root_path[i];
         }
 
-        uuid_t value = *data_id;
-        current.data = value;
+        memcpy(&(current.data), data_id, sizeof(data_id));
         //parent.data = *data_id;
 
         memcpy(data_block, &current, sizeof(Dirent));        
