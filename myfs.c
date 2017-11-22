@@ -24,7 +24,7 @@
 #define ptr_sub(ptr, x) ((void*)(ptr) - (x))
 
 #define SLASH "/"
-#define DIRENTHASHSIZE 2
+#define DIRENTHASHSIZE 3
 
 // Let's cache the root fcb and dirent data structure in memory.
 char root_path[2] = "/\0";
@@ -511,17 +511,20 @@ void init_fs() {
         root_fcb.uid = getuid();
         root_fcb.gid = getgid();
 
+        // We have to create a uuid for the root fcb to contain data - the ROOT_OBJECT_KEY is only to get the root fcb to kick off the process.
         uuid_generate(root_fcb.data);
 
+        // Create a data block and some Dirents.
         uint8_t *data_block[MY_MAX_FILE_SIZE];
         Dirent current, parent;
 
-        // Set strings for root dirents
+        // Set strings for root Dirents
         for(int i = 0; root_path[i] != '\0'; i++) {
         	current.name[i] = root_path[i];
         	parent.name[i] = root_path[i];
         }
 
+        // Set these Dirents to contain the 
         memcpy(current.data, root_fcb.data, sizeof(uuid_t));
         memcpy(parent.data, root_fcb.data, sizeof(uuid_t));
 
@@ -541,10 +544,13 @@ void init_fs() {
         if(rc != UNQLITE_OK)
             error_handler(rc);
 
-        printf("Testing some variables before we continue ... \n");
-        printf("Current: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", current.name, uuid_compare(zero_uuid, current.data) != 0, uuid_compare(root_fcb.data, current.data) == 0);
-        printf("Parent:  \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", parent.name, uuid_compare(zero_uuid, parent.data) != 0, uuid_compare(root_fcb.data, parent.data) == 0);
+        Dirent curr = ptr_add(data_block, 0);
+        Dirent pare = ptr_add(data_block, sizeof(Dirent));
 
+        printf("Testing some variables before we continue ... \n");
+        printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", curr.name, uuid_compare(zero_uuid, curr.data) != 0, uuid_compare(root_fcb.data, curr.data) == 0);
+        printf("Pare: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", pare.name, uuid_compare(zero_uuid, pare.data) != 0, uuid_compare(root_fcb.data, pare.data) == 0);
+        
     }
     else {
         if(rc == UNQLITE_OK)
