@@ -16,15 +16,24 @@
 #include <fuse.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include "myfs.h"
 
-#define SLASH "/"
+#define ptr_add(ptr, x) ((void*)(ptr) + (x))
+#define ptr_sub(ptr, x) ((void*)(ptr) - (x))
 
-// The one and only fcb that this implmentation will have. We'll keep it in memory. A better 
-// implementation would, at the very least, cache it's root directory in memory.
+#define SET_STRING(string, value) (string = value + '\0')
+
+#define SLASH "/"
+# define DIRENTHASHSIZE 2
+
+// Let's cache the root fcb and dirent data structure in memory.
 fcb root_fcb;
+Dirent * root_table[DIRENTHASHSIZE];
 unqlite_int64 root_object_size_value = sizeof(fcb);
+
+Dirent * dirent_hash_table[DIRENTHASHSIZE];
 
 // This is the pointer to the database we will use to store all our files
 unqlite *pDb;
@@ -37,10 +46,6 @@ uuid_t zero_uuid;
 // Auxiliary methods
 
 // Creating a hash table structure for use in directories. I fully acknowledge the following code as borrowing/at least inspired from Kernighan & Ritchie's phenomenal C programming book.
-# define DIRENTHASHSIZE 2
-
-Dirent * dirent_hash_table[DIRENTHASHSIZE];
-Dirent * root_table[DIRENTHASHSIZE];
 
 unsigned int hash(char *name) {
     unsigned int hashval;
@@ -126,23 +131,15 @@ static int myfs_getattr(const char *path, struct stat *stbuf) {
         // We'll start off by restricting to just the root directory.
 
         // The root directory contents, containing a sequence of Dirent objects which contain the mapping from path names to uuids
-        uint8_t data_block[MY_MAX_FILE_SIZE];
-        memset(&data_block, 0, MY_MAX_FILE_SIZE);
-        uuid_t *data_id = &(root_fcb.data);
-        // Is there a data block?
-        if(uuid_compare(zero_uuid,*data_id) != 0) {
-            unqlite_int64 nBytes;  //Data length.
-            int rc = unqlite_kv_fetch(pDb,data_id,KEY_SIZE,NULL,&nBytes);
-            if(rc != UNQLITE_OK)
-                error_handler(rc);
+        
+    	char *token;
 
-            if(nBytes!=MY_MAX_FILE_SIZE) {
-                write_log("myfs_read - EIO");
-                return -EIO;
-            }
+    	while((token = strtok(path, SLASH)) != NULL) {
+    		write_log("token: %s\n", token);
+    	}
 
-            // Fetch the fcb the root data block from the store.
-            unqlite_kv_fetch(pDb,data_id,KEY_SIZE,&data_block,&nBytes);
+
+
         }
         if (strcmp(path, root_fcb.path) == 0) {
             stbuf->st_mode = root_fcb.mode;
@@ -255,7 +252,7 @@ static int myfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 		write_log("myfs_create - ENAMETOOLONG");
 		return -ENAMETOOLONG;
 	}
-	sprintf(root_fcb.path,path);
+	sprintf(root_fcb.path, path);
 	struct fuse_context *context = fuse_get_context();
 	root_fcb.uid = context->uid;
 	root_fcb.gid = context->gid;
@@ -480,19 +477,19 @@ void init_fs() {
     uuid_clear(zero_uuid);
 
     // Open the database.
-    rc = unqlite_open(&pDb,DATABASE_NAME,UNQLITE_OPEN_CREATE);
+    rc = unqlite_open(&pDb, DATABASE_NAME, UNQLITE_OPEN_CREATE);
     if(rc != UNQLITE_OK)
         error_handler(rc);
 
-    unqlite_int64 nBytes;  // Data length
+    unqlite_int64 num_bytes;  // Data length
 
     // Try to fetch the root element
     // The last parameter is a pointer to a variable which will hold the number of bytes actually read
-    rc = unqlite_kv_fetch(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, &nBytes);
+    rc = unqlite_kv_fetch(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, &num_bytes);
 
     // if it doesn't exist, we need to create one and put it into the database. This will be the root
     // directory of our filesystem i.e. "/"
-    if(rc==UNQLITE_NOTFOUND) {
+    if(rc == UNQLITE_NOTFOUND) {
 
         printf("init_store: root object was not found\n");
 
@@ -507,8 +504,25 @@ void init_fs() {
         root_fcb.atime = time(0);
         root_fcb.uid = getuid();
         root_fcb.gid = getgid();
+        uuid_generate(root_fcb.data);
 
-        // Write the root FCB and directory (which is encapsulated in writing )
+        uint8_t data_block[MY_MAX_FILE_SIZE];
+        Dirent *current, *parent;
+        SET_STRING(current->name, "/");
+        current->data = root_fcb.data;
+        SET_STRING(parent->name, "/");
+        parent->data = root_fcb.data;
+
+        data_block[0] = *current;
+        data_block[0 + sizeof(Dirent)] = *parent;
+
+        printf("init_fs: writing root dirents\n");
+        rc = unqlite_kv_store(pDb, root_fcb.data, KEY_SIZE, &data_block, sizeof(data_block));
+
+        if(rc != UNQLITE_OK)
+            error_handler(rc);
+
+        // Write the root FCB
         printf("init_fs: writing root fcb\n");
         rc = unqlite_kv_store(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, sizeof(fcb));
 

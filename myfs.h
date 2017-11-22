@@ -25,7 +25,6 @@
 
 // see 'man 2 stat' and 'man 2 chmod'
 typedef struct fcb {
-    char path[MAX_PATH_SIZE];    
     //meta-data for the 'file'
     uid_t  uid;     /* user */
     gid_t  gid;     /* group */
@@ -46,7 +45,7 @@ typedef struct fcb {
 typedef struct Dirent {
     struct Dirent *next;
     char name[MAX_PATH_SIZE];
-    uuid_t data;    // This can be fixed in size because the size of the fcb won't change.
+    uuid_t data;    // This can be fixed in size because the payload is just an fcb, which is constant in size.
 } Dirent;
 
 
