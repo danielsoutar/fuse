@@ -529,7 +529,7 @@ void init_fs() {
         memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         printf("init_fs: writing root dirents\n");
-        rc = unqlite_kv_store(pDb, data_id, KEY_SIZE, &data_block, sizeof(data_block));
+        rc = unqlite_kv_store(pDb, &(root_fcb.data), KEY_SIZE, &data_block, sizeof(data_block));
 
         if(rc != UNQLITE_OK)
             error_handler(rc);
