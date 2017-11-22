@@ -521,8 +521,10 @@ void init_fs() {
         	parent->name[i] = root_path[i];
         }
 
-        current->data = root_fcb.data;
-        parent->data = root_fcb.data;
+        uuid_t id = root_fcb.data;
+
+        current->data = id;
+        parent->data = id;
 
         //data_block[0] = *current;
         memcpy(data_block, &current, sizeof(Dirent));        
