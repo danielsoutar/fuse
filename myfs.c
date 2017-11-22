@@ -511,8 +511,8 @@ void init_fs() {
         root_fcb.uid = getuid();
         root_fcb.gid = getgid();
 
-        uuid_t *data_id = &(root_fcb.data);
         uuid_generate(root_fcb.data);
+        uuid_t *data_id = &(root_fcb.data);
 
         uint8_t *data_block[MY_MAX_FILE_SIZE];
         Dirent current, parent;
@@ -543,8 +543,7 @@ void init_fs() {
             error_handler(rc);
 
         printf("Testing some variables before we continue ... \n");
-        printf("Current: \nName: %s\nid is non-zero and equal to root id: %d\n", current.name, ((uuid_compare(zero_uuid, current.data) != 0) && (uuid_compare(root_fcb.data, current.data) == 0)));
-        printf("Parent:  \nName: %s\nid is non-zero and equal to root id: %d\n", parent.name, ((uuid_compare(zero_uuid, parent.data) != 0) && (uuid_compare(root_fcb.data, parent.data) == 0)));
+        printf("Current: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", current.name, uuid_compare(zero_uuid, current.data) != 0, uuid_compare(root_fcb.data, current.data) == 0);
 
     }
     else {
