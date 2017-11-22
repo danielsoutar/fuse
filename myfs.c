@@ -510,6 +510,8 @@ void init_fs() {
         root_fcb.atime = time(0);
         root_fcb.uid = getuid();
         root_fcb.gid = getgid();
+
+        uuid_t *data_id = &(root_fcb.data);
         uuid_generate(root_fcb.data);
 
         uint8_t *data_block[MY_MAX_FILE_SIZE];
@@ -521,17 +523,15 @@ void init_fs() {
         	parent->name[i] = root_path[i];
         }
 
-        uuid_t id = root_fcb.data;
-
-        current->data = id;
-        parent->data = id;
+        current->data = *data_id;
+        parent->data = *data_id;
 
         //data_block[0] = *current;
         memcpy(data_block, &current, sizeof(Dirent));        
         memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         printf("init_fs: writing root dirents\n");
-        rc = unqlite_kv_store(pDb, root_fcb.data, KEY_SIZE, &data_block, sizeof(data_block));
+        rc = unqlite_kv_store(pDb, data_id, KEY_SIZE, &data_block, sizeof(data_block));
 
         if(rc != UNQLITE_OK)
             error_handler(rc);
