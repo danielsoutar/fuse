@@ -522,13 +522,10 @@ void init_fs() {
         	current.name[i] = root_path[i];
         	parent.name[i] = root_path[i];
         }
-        printf("%d is sizeof data for 'current' dirent.\n", sizeof(current.data));
-        printf("%d is sizeof data for 'parent' dirent.\n", sizeof(parent.data));
 
-        // current->data = *data_id;
-        // parent->data = *data_id;
+        current->data = *data_id;
+        parent->data = *data_id;
 
-        //data_block[0] = *current;
         memcpy(data_block, &current, sizeof(Dirent));        
         memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
