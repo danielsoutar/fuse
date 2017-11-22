@@ -23,12 +23,11 @@
 #define ptr_add(ptr, x) ((void*)(ptr) + (x))
 #define ptr_sub(ptr, x) ((void*)(ptr) - (x))
 
-#define SET_STRING(string, value) (string = value + '\0')
-
 #define SLASH "/"
-# define DIRENTHASHSIZE 2
+#define DIRENTHASHSIZE 2
 
 // Let's cache the root fcb and dirent data structure in memory.
+char root_path[] = "/\0";
 fcb root_fcb;
 Dirent * root_table[DIRENTHASHSIZE];
 unqlite_int64 root_object_size_value = sizeof(fcb);
@@ -169,7 +168,7 @@ static int myfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 	write_log("write_readdir(path=\"%s\", buf=0x%08x, filler=0x%08x, offset=%lld, fi=0x%08x)\n", path, buf, filler, offset, fi);
 	
 	// This implementation supports only a root directory so return an error if the path is not '/'.
-	if (strcmp(path, "/") != 0){
+	if (strcmp(path, root_path) != 0) {
 		write_log("myfs_readdir - ENOENT");
 		return -ENOENT;
 	}
@@ -179,9 +178,9 @@ static int myfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 	filler(buf, "..", NULL, 0);
 
     // The root FCB is in memory, so we simply read the name of the file from the path variable inside it
-	char *pathP = (char*)&(root_fcb.path);
+	char *pathP = (char*)&(root_path);
 
-	if(*pathP!='\0'){
+	if(*pathP != '\0') {
 		// drop the leading '/';
 		pathP++;
 		filler(buf, pathP, NULL, 0);
@@ -200,7 +199,7 @@ static int myfs_read(const char *path, char *buf, size_t size, off_t offset, str
 	
 	write_log("myfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n", path, buf, size, offset, fi);
 	
-	if(strcmp(path, root_fcb.path) != 0){
+	if(strcmp(path, root_path) != 0) {
 		write_log("myfs_read - ENOENT");
 		return -ENOENT;
 	}
@@ -212,19 +211,20 @@ static int myfs_read(const char *path, char *buf, size_t size, off_t offset, str
 	memset(&data_block, 0, MY_MAX_FILE_SIZE);
 	uuid_t *data_id = &(root_fcb.data);
 	// Is there a data block?
-	if(uuid_compare(zero_uuid,*data_id) != 0) {
-		unqlite_int64 nBytes;  //Data length.
-		int rc = unqlite_kv_fetch(pDb,data_id,KEY_SIZE,NULL,&nBytes);
-		if(rc != UNQLITE_OK) {
+	if(uuid_compare(zero_uuid, *data_id) != 0) {
+		unqlite_int64 num_bytes;  //Data length.
+		int rc = unqlite_kv_fetch(pDb, data_id, KEY_SIZE, NULL, &num_bytes);
+		
+		if(rc != UNQLITE_OK)
 		  error_handler(rc);
-		}
-		if(nBytes!=MY_MAX_FILE_SIZE) {
+
+		if(nBytes != MY_MAX_FILE_SIZE) {
 			write_log("myfs_read - EIO");
 			return -EIO;
 		}
 	
 		// Fetch the fcb the root data block from the store.
-		unqlite_kv_fetch(pDb,data_id,KEY_SIZE,&data_block,&nBytes);
+		unqlite_kv_fetch(pDb, data_id, KEY_SIZE, &data_block, &num_bytes);
 	}
 	
 	if (offset < len) {
@@ -242,23 +242,26 @@ static int myfs_read(const char *path, char *buf, size_t size, off_t offset, str
 static int myfs_create(const char *path, mode_t mode, struct fuse_file_info *fi){   
     write_log("myfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n", path, mode, fi);
 	    
-    if(root_fcb.path[0] != '\0') {
+    if(root_path[0] != '\0') {
 		write_log("myfs_create - ENOSPC");
 		return -ENOSPC;
 	}
 		
 	int pathlen = strlen(path);
-	if(pathlen>=MAX_PATH_SIZE) {
+
+	if(pathlen >= MAX_PATH_SIZE) {
 		write_log("myfs_create - ENAMETOOLONG");
 		return -ENAMETOOLONG;
 	}
-	sprintf(root_fcb.path, path);
+
+	sprintf(root_path, path);
 	struct fuse_context *context = fuse_get_context();
 	root_fcb.uid = context->uid;
 	root_fcb.gid = context->gid;
 	root_fcb.mode = mode|S_IFREG;
 	
 	int rc = unqlite_kv_store(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, sizeof(fcb));
+
 	if(rc != UNQLITE_OK) {
 		write_log("myfs_create - EIO");
 		return -EIO;
@@ -272,14 +275,16 @@ static int myfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 static int myfs_utime(const char *path, struct utimbuf *ubuf){
     write_log("myfs_utime(path=\"%s\", ubuf=0x%08x)\n", path, ubuf);
     
-	if(strcmp(path, root_fcb.path) != 0) {
+	if(strcmp(path, root_path) != 0) {
 		write_log("myfs_utime - ENOENT");
 		return -ENOENT;
 	}
-	root_fcb.mtime=ubuf->modtime;
+
+	root_fcb.mtime = ubuf->modtime;
 	
 	// Write the fcb to the store.
-    int rc = unqlite_kv_store(pDb,ROOT_OBJECT_KEY,ROOT_OBJECT_KEY_SIZE,&root_fcb,sizeof(fcb));
+    int rc = unqlite_kv_store(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, sizeof(fcb));
+
 	if(rc != UNQLITE_OK) {
 		write_log("myfs_write - EIO");
 		return -EIO;
@@ -293,7 +298,7 @@ static int myfs_utime(const char *path, struct utimbuf *ubuf){
 static int myfs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi){   
     write_log("myfs_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n", path, buf, size, offset, fi);
     
-	if(strcmp(path, root_fcb.path) != 0) {
+	if(strcmp(path, root_path) != 0) {
 		write_log("myfs_write - ENOENT");
 		return -ENOENT;
     }
@@ -308,21 +313,20 @@ static int myfs_write(const char *path, const char *buf, size_t size, off_t offs
 	memset(&data_block, 0, MY_MAX_FILE_SIZE);
 	uuid_t *data_id = &(root_fcb.data);
 	// Is there a data block?
-	if(uuid_compare(zero_uuid,*data_id) == 0) {
-		// Generate a UUID for the data block. We'll write the block itself later.
-		uuid_generate(root_fcb.data);
-	}
+	if(uuid_compare(zero_uuid, *data_id) == 0)
+		uuid_generate(root_fcb.data); // Generate a UUID for the data block. We'll write the block itself later.
 	else {
 		// First we will check the size of the obejct in the store to ensure that we won't overflow the buffer.
-		unqlite_int64 nBytes;  // Data length.
-		int rc = unqlite_kv_fetch(pDb,data_id,KEY_SIZE,NULL,&nBytes);
-		if(rc != UNQLITE_OK || nBytes != MY_MAX_FILE_SIZE) {
+		unqlite_int64 num_bytes;  // Data length.
+		int rc = unqlite_kv_fetch(pDb, data_id, KEY_SIZE, NULL, &num_bytes);
+
+		if(rc != UNQLITE_OK || num_bytes != MY_MAX_FILE_SIZE) {
 			write_log("myfs_write - EIO");
 			return -EIO;
 		}
 	
 		// Fetch the data block from the store. 
-		unqlite_kv_fetch(pDb,data_id,KEY_SIZE,&data_block,&nBytes);
+		unqlite_kv_fetch(pDb, data_id, KEY_SIZE, &data_block, &num_bytes);
 		// Error handling?
 	}
 	
@@ -330,20 +334,22 @@ static int myfs_write(const char *path, const char *buf, size_t size, off_t offs
     int written = snprintf(data_block, MY_MAX_FILE_SIZE, buf);
 	
 	// Write the data block to the store.
-	int rc = unqlite_kv_store(pDb,data_id,KEY_SIZE,&data_block,MY_MAX_FILE_SIZE);
+	int rc = unqlite_kv_store(pDb, data_id, KEY_SIZE, &data_block, MY_MAX_FILE_SIZE);
+
 	if(rc != UNQLITE_OK) {
 		write_log("myfs_write - EIO");
 		return -EIO;
 	}
 	
 	// Update the fcb in-memory.
-	root_fcb.size=written;
+	root_fcb.size = written;
 	time_t now = time(NULL);
-	root_fcb.mtime=now;
-	root_fcb.ctime=now;
+	root_fcb.mtime = now;
+	root_fcb.ctime = now;
 	
 	// Write the fcb to the store.
-    rc = unqlite_kv_store(pDb,ROOT_OBJECT_KEY,ROOT_OBJECT_KEY_SIZE,&root_fcb,sizeof(fcb));
+    rc = unqlite_kv_store(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, sizeof(fcb));
+
 	if(rc != UNQLITE_OK) {
 		write_log("myfs_write - EIO");
 		return -EIO;
@@ -367,7 +373,8 @@ int myfs_truncate(const char *path, off_t newsize){
 	root_fcb.size = newsize;
 	
 	// Write the fcb to the store.
-    int rc = unqlite_kv_store(pDb,ROOT_OBJECT_KEY,ROOT_OBJECT_KEY_SIZE,&root_fcb,sizeof(fcb));
+    int rc = unqlite_kv_store(pDb, ROOT_OBJECT_KEY, ROOT_OBJECT_KEY_SIZE, &root_fcb, sizeof(fcb));
+
 	if(rc != UNQLITE_OK) {
 		write_log("myfs_write - EIO");
 		return -EIO;
@@ -440,7 +447,7 @@ int myfs_release(const char *path, struct fuse_file_info *fi){
 // Open a file. Open should check if the operation is permitted for the given flags (fi->flags).
 // Read 'man 2 open'.
 static int myfs_open(const char *path, struct fuse_file_info *fi){
-	if (strcmp(path, root_fcb.path) != 0)
+	if (strcmp(path, root_path) != 0)
 		return -ENOENT;
 		
 	write_log("myfs_open(path\"%s\", fi=0x%08x)\n", path, fi);
@@ -506,15 +513,21 @@ void init_fs() {
         root_fcb.gid = getgid();
         uuid_generate(root_fcb.data);
 
-        uint8_t data_block[MY_MAX_FILE_SIZE];
+        uint8_t *data_block[MY_MAX_FILE_SIZE];
         Dirent *current, *parent;
-        SET_STRING(current->name, "/");
+
+        // Set strings for root dirents
+        for(int i = 0; root_path[i] != NULL; i++) {
+        	current->name[i] = root_path[i];
+        	parent->name[i] = root_path[i];
+        }
+
         current->data = root_fcb.data;
-        SET_STRING(parent->name, "/");
         parent->data = root_fcb.data;
 
-        data_block[0] = *current;
-        data_block[0 + sizeof(Dirent)] = *parent;
+        //data_block[0] = *current;
+        memcpy(data_block, &current, sizeof(Dirent));        
+        memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         printf("init_fs: writing root dirents\n");
         rc = unqlite_kv_store(pDb, root_fcb.data, KEY_SIZE, &data_block, sizeof(data_block));
@@ -532,7 +545,7 @@ void init_fs() {
     else {
         if(rc == UNQLITE_OK)
             printf("init_store: root object was found\n");
-        if(nBytes != sizeof(fcb)) {
+        if(num_bytes != sizeof(fcb)) {
             printf("Data object has unexpected size. Doing nothing.\n");
             exit(-1);
         }
