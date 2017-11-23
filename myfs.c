@@ -528,7 +528,7 @@ void init_fs() {
 
         // Write these Dirents into the data block
         memcpy((Dirent *)data_block, &current, sizeof(Dirent));        
-        memcpy((Dirent *)data_block + sizeof(Dirent), &parent, sizeof(Dirent));        
+        memcpy((Dirent *)data_block + 1, &parent, sizeof(Dirent));        
         //memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         // Write the root data block
