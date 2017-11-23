@@ -544,8 +544,8 @@ void init_fs() {
         if(rc != UNQLITE_OK)
             error_handler(rc);
 
-        Dirent curr = ptr_add(*data_block, 0);
-        Dirent pare = ptr_add(*data_block, sizeof(Dirent));
+        Dirent curr = ptr_add(data_block, 0);
+        Dirent pare = ptr_add(data_block, sizeof(Dirent));
 
         printf("Testing some variables before we continue ... \n");
         printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", curr.name, uuid_compare(zero_uuid, curr.data) != 0, uuid_compare(root_fcb.data, curr.data) == 0);
