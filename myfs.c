@@ -519,10 +519,8 @@ void init_fs() {
         Dirent current, parent;
 
         // Set strings for root Dirents
-        for(int i = 0; root_path[i] != '\0'; i++) {
-        	current.name[i] = root_path[i];
-        	parent.name[i] = root_path[i];
-        }
+        strcpy(current.name, ".\0");
+        strcpy(parent.name, "..\0");
 
         // Set these Dirents to contain the same id as the root
         memcpy(current.data, root_fcb.data, sizeof(uuid_t));
@@ -530,7 +528,8 @@ void init_fs() {
 
         // Write these Dirents into the data block
         memcpy(data_block, &current, sizeof(Dirent));        
-        memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
+        memcpy(data_block, &current, sizeof(Dirent));        
+        //memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         // Write the root data block
         printf("init_fs: writing root dirents\n");
@@ -549,7 +548,7 @@ void init_fs() {
         Dirent curr, pare;
 
         memcpy(&curr, data_block, sizeof(Dirent));        
-        memcpy(&pare, ptr_add(data_block, sizeof(Dirent)), sizeof(Dirent));
+        memcpy(&pare, data_block, sizeof(Dirent));
 
         printf("Testing some variables before we continue ... \n");
         printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", curr.name, uuid_compare(zero_uuid, curr.data) != 0, uuid_compare(root_fcb.data, curr.data) == 0);
