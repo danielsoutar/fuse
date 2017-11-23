@@ -552,8 +552,8 @@ void init_fs() {
 
         Dirent curr, pare;
 
-        memcpy(&curr, (Dirent *) data_block, sizeof(Dirent));        
-        memcpy(&pare, (Dirent *) data_block + 1, sizeof(Dirent));
+        memcpy(&curr, (void *) data_block, sizeof(Dirent));        
+        memcpy(&pare, (void *) data_block + sizeof(Dirent), sizeof(Dirent));
 
         printf("Testing some variables before we continue ... \n");
         printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", curr.name, uuid_compare(zero_uuid, curr.data) != 0, uuid_compare(root_fcb.data, curr.data) == 0);
