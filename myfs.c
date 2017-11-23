@@ -545,6 +545,11 @@ void init_fs() {
         if(rc != UNQLITE_OK)
             error_handler(rc);
 
+        rc = unqlite_kv_fetch(pDb, root_fcb.data, KEY_SIZE, &data_block, &num_bytes);
+
+        if(rc != UNQLITE_OK)
+        	error_handler(rc);
+
         Dirent curr, pare;
 
         memcpy(&curr, (Dirent *) data_block, sizeof(Dirent));        
