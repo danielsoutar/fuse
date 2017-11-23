@@ -546,7 +546,7 @@ void init_fs() {
         if(rc != UNQLITE_OK)
             error_handler(rc);
 
-        Dirent ptr = (Dirent) data_block;
+        Dirent* ptr = (Dirent *) data_block;
 
         //Dirent curr = ptr_add(&data_block, 0);
         //Dirent pare = ptr_add(&data_block, sizeof(Dirent));
