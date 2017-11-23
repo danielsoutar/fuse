@@ -548,9 +548,9 @@ void init_fs() {
 
         Dirent curr;
 
-        uint8_t *ptr = data_block;
+        Dirent *ptr = data_block;
 
-        curr = *((Dirent *)((void *)(ptr) + 0));
+        curr = *ptr;
 
         //Dirent curr = ptr_add(&data_block, 0);
         //Dirent pare = ptr_add(&data_block, sizeof(Dirent));
