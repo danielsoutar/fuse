@@ -496,7 +496,6 @@ void init_fs() {
     // if it doesn't exist, we need to create one and put it into the database. This will be the root
     // directory of our filesystem i.e. "/"
     if(rc == UNQLITE_NOTFOUND) {
-
         printf("init_store: root object was not found\n");
 
         // clear everything in root_fcb
@@ -529,7 +528,6 @@ void init_fs() {
         // Write these Dirents into the data block
         memcpy(ptr_add(data_block, 0), &current, sizeof(Dirent));        
         memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));        
-        //memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         // Write the root data block
         printf("init_fs: writing root dirents\n");
@@ -547,7 +545,7 @@ void init_fs() {
 
         rc = unqlite_kv_fetch(pDb, root_fcb.data, KEY_SIZE, &data_block, &num_bytes);
 
-        if(rc != UNQLITE_OK)
+        if(rc != UNQLITE_OK || num_bytes != (sizeof(uint8_t) * MY_MAX_FILE_SIZE))
         	error_handler(rc);
 
         Dirent curr, pare;
