@@ -527,8 +527,8 @@ void init_fs() {
         memcpy(parent.data, root_fcb.data, sizeof(uuid_t));
 
         // Write these Dirents into the data block
-        memcpy((void *)data_block, &current, sizeof(Dirent));        
-        memcpy((void *)data_block + sizeof(Dirent), &parent, sizeof(Dirent));        
+        memcpy(ptr_add(data_block, 0), &current, sizeof(Dirent));        
+        memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));        
         //memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
         // Write the root data block
