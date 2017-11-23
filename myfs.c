@@ -547,13 +547,11 @@ void init_fs() {
             error_handler(rc);
 
         Dirent* ptr = (Dirent *) data_block;
-
-        //Dirent curr = ptr_add(&data_block, 0);
-        //Dirent pare = ptr_add(&data_block, sizeof(Dirent));
+        Dirent* ptr2 = ptr_add(ptr, sizeof(Dirent));
 
         printf("Testing some variables before we continue ... \n");
         printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", ptr->name, uuid_compare(zero_uuid, ptr->data) != 0, uuid_compare(root_fcb.data, ptr->data) == 0);
-        //printf("Pare: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", pare.name, uuid_compare(zero_uuid, pare.data) != 0, uuid_compare(root_fcb.data, pare.data) == 0);
+        printf("Pare: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", ptr2->name, uuid_compare(zero_uuid, ptr2->data) != 0, uuid_compare(root_fcb.data, ptr2->data) == 0);
         
     }
     else {
