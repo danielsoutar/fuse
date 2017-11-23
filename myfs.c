@@ -524,13 +524,15 @@ void init_fs() {
         	parent.name[i] = root_path[i];
         }
 
-        // Set these Dirents to contain the 
+        // Set these Dirents to contain the same id as the root
         memcpy(current.data, root_fcb.data, sizeof(uuid_t));
         memcpy(parent.data, root_fcb.data, sizeof(uuid_t));
 
+        // Write these Dirents into the data block
         memcpy(data_block, &current, sizeof(Dirent));        
         memcpy(ptr_add(data_block, sizeof(Dirent)), &parent, sizeof(Dirent));
 
+        // Write the root data block
         printf("init_fs: writing root dirents\n");
         rc = unqlite_kv_store(pDb, &(root_fcb.data), KEY_SIZE, &data_block, sizeof(data_block));
 
@@ -544,12 +546,18 @@ void init_fs() {
         if(rc != UNQLITE_OK)
             error_handler(rc);
 
-        Dirent curr = ptr_add(data_block, 0);
-        Dirent pare = ptr_add(data_block, sizeof(Dirent));
+        Dirent curr;
+
+        uint8_t *ptr = &data_block;
+
+        curr = *((Dirent *)((void *)(ptr) + 0));
+
+        //Dirent curr = ptr_add(&data_block, 0);
+        //Dirent pare = ptr_add(&data_block, sizeof(Dirent));
 
         printf("Testing some variables before we continue ... \n");
         printf("Curr: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", curr.name, uuid_compare(zero_uuid, curr.data) != 0, uuid_compare(root_fcb.data, curr.data) == 0);
-        printf("Pare: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", pare.name, uuid_compare(zero_uuid, pare.data) != 0, uuid_compare(root_fcb.data, pare.data) == 0);
+        //printf("Pare: \nName: %s\nid is non-zero: %d\nid is equal to root id: %d\n", pare.name, uuid_compare(zero_uuid, pare.data) != 0, uuid_compare(root_fcb.data, pare.data) == 0);
         
     }
     else {
